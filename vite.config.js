@@ -4,6 +4,7 @@ import { VitePWA } from 'vite-plugin-pwa';
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  base: '/story-map/',
   root: resolve(__dirname, 'src'),
   envDir: resolve(__dirname),
   publicDir: resolve(__dirname, 'src', 'public'),
