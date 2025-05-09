@@ -1,5 +1,6 @@
 import routes from '../routes/routes';
-import { getActiveRoute } from '../routes/url-parser';
+import { getActiveRoute, getActivePathname } from '../routes/url-parser';
+import NotFoundPage from './not-found/not-found-page';
 
 class App {
   #content = null;
@@ -39,46 +40,45 @@ class App {
   }
 
   async renderPage() {
+    if (this.#currentPage && typeof this.#currentPage.destroy === 'function') {
+      this.#currentPage.destroy();
+    }
+
+    const urlKey = getActiveRoute();
+    const PageClass = routes[urlKey] || NotFoundPage;
+
+    this.#currentPage = new PageClass();
+
     try {
-      const url = getActiveRoute();
-
-      const page = routes[url];
-
-      if (!page) {
-        console.error(`No route found for: ${url}`);
-        return;
-      }
-
-      if (this.#currentPage && typeof this.#currentPage.destroy === 'function') {
-        this.#currentPage.destroy();
-      }
-
-      const isNavigatingToStoryDetail = url.startsWith('/story/');
-      const isNavigatingToHome = url === '/';
-
+      const pageUrlForScroll = getActivePathname();
       if (this.#supportsViewTransitions) {
         const transition = document.startViewTransition(async () => {
-          this.#content.innerHTML = await page.render();
-          await page.afterRender();
-
-          if (isNavigatingToStoryDetail) {
+          this.#content.innerHTML = await this.#currentPage.render();
+          if (typeof this.#currentPage.afterRender === 'function') {
+            await this.#currentPage.afterRender();
+          }
+          if (pageUrlForScroll.startsWith('/story/')) {
             window.scrollTo(0, 0);
           }
         });
-
         await transition.finished;
       } else {
-        this.#content.innerHTML = await page.render();
-        await page.afterRender();
-
-        if (isNavigatingToStoryDetail) {
+        this.#content.innerHTML = await this.#currentPage.render();
+        if (typeof this.#currentPage.afterRender === 'function') {
+          await this.#currentPage.afterRender();
+        }
+        if (pageUrlForScroll.startsWith('/story/')) {
           window.scrollTo(0, 0);
         }
       }
-
-      this.#currentPage = page;
     } catch (error) {
       console.error('Error rendering page:', error);
+      const errorPage = new NotFoundPage();
+      this.#content.innerHTML = await errorPage.render();
+      if (typeof errorPage.afterRender === 'function') {
+        await errorPage.afterRender();
+      }
+      this.#currentPage = errorPage;
     }
   }
 }

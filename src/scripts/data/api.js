@@ -1,13 +1,14 @@
 import CONFIG from '../config';
+import { getAllStories, putStories, getStory as getStoryFromDb, putStory as putStoryToDb } from './idb-helper';
 
 const ENDPOINTS = {
-  ENDPOINT: `${CONFIG.BASE_URL}/v1`,
-  STORIES: `${CONFIG.BASE_URL}/v1/stories`,
-  STORY_DETAIL: (id) => `${CONFIG.BASE_URL}/v1/stories/${id}`,
-  ADD_STORY: `${CONFIG.BASE_URL}/v1/stories`,
-  ADD_STORY_GUEST: `${CONFIG.BASE_URL}/v1/stories/guest`,
-  REGISTER: `${CONFIG.BASE_URL}/v1/register`,
-  LOGIN: `${CONFIG.BASE_URL}/v1/login`,
+  ENDPOINT: `${CONFIG.BASE_URL}`,
+  STORIES: `${CONFIG.BASE_URL}/stories`,
+  STORY_DETAIL: (id) => `${CONFIG.BASE_URL}/stories/${id}`,
+  ADD_STORY: `${CONFIG.BASE_URL}/stories`,
+  ADD_STORY_GUEST: `${CONFIG.BASE_URL}/stories/guest`,
+  REGISTER: `${CONFIG.BASE_URL}/register`,
+  LOGIN: `${CONFIG.BASE_URL}/login`,
 };
 
 export async function getData() {
@@ -17,8 +18,8 @@ export async function getData() {
 
 export async function getStories(page = 1, size = 10, withLocation = true, token = null) {
   const url = new URL(ENDPOINTS.STORIES);
-  url.searchParams.append('page', page);
-  url.searchParams.append('size', size);
+  url.searchParams.append('page', page.toString());
+  url.searchParams.append('size', size.toString());
   url.searchParams.append('location', withLocation ? '1' : '0');
 
   const headers = {};
@@ -26,26 +27,61 @@ export async function getStories(page = 1, size = 10, withLocation = true, token
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const response = await fetch(url, { headers });
-  if (!response.ok) {
-    throw new Error('Failed to fetch stories');
+  try {
+    const response = await fetch(url, { headers });
+    if (!response.ok) {
+      if (page === 1) {
+        const storiesFromDb = await getAllStories();
+        if (storiesFromDb && storiesFromDb.length > 0) {
+          return storiesFromDb;
+        }
+      }
+      throw new Error(`Failed to fetch stories from API: ${response.statusText}`);
+    }
+    const data = await response.json();
+    if (data.listStory && data.listStory.length > 0) {
+      await putStories(data.listStory);
+    }
+    return data.listStory;
+  } catch (error) {
+    if (page === 1) {
+      const storiesFromDb = await getAllStories();
+      if (storiesFromDb && storiesFromDb.length > 0) {
+        return storiesFromDb;
+      }
+    }
+    throw error;
   }
-  const data = await response.json();
-  return data.listStory;
 }
 
 export async function getStoryDetail(id, token = null) {
+  try {
+    const storyFromDb = await getStoryFromDb(id);
+    if (storyFromDb) {
+      return storyFromDb;
+    }
+  } catch (dbError) {
+    throw dbError;
+  }
+
   const headers = {};
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const response = await fetch(ENDPOINTS.STORY_DETAIL(id), { headers });
-  if (!response.ok) {
-    throw new Error('Failed to fetch story detail');
+  try {
+    const response = await fetch(ENDPOINTS.STORY_DETAIL(id), { headers });
+    if (!response.ok) {
+      throw new Error(`Failed to fetch story detail for ${id} from API: ${response.statusText}`);
+    }
+    const data = await response.json();
+    if (data.story) {
+      await putStoryToDb(data.story);
+    }
+    return data.story;
+  } catch (networkError) {
+    throw networkError;
   }
-  const data = await response.json();
-  return data.story;
 }
 
 export async function addStory(storyData, token = null) {

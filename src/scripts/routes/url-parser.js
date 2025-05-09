@@ -15,7 +15,11 @@ function constructRouteFromSegments(pathSegments) {
   }
 
   if (pathSegments.id) {
-    pathname = pathname.concat('/:id');
+    if (pathSegments.resource === 'story') {
+      pathname = pathname.concat('/:id');
+    } else {
+      pathname = pathname.concat(`/${pathSegments.id}`);
+    }
   }
 
   return pathname || '/';
@@ -28,11 +32,6 @@ export function getActivePathname() {
 
 export function getActiveRoute() {
   const pathname = getActivePathname();
-
-  if (pathname.startsWith('/story-detail')) {
-    return '/story-detail';
-  }
-
   const urlSegments = extractPathnameSegments(pathname);
   return constructRouteFromSegments(urlSegments);
 }

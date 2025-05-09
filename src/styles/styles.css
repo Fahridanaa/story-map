@@ -597,7 +597,8 @@ header {
 	transform: translateX(-5px);
 }
 
-.end-message {
+.end-message,
+.offline-message {
 	text-align: center;
 	padding: 1rem;
 	color: var(--secondary-color);
@@ -898,4 +899,32 @@ header {
 	padding: 20px 0;
 	text-align: center;
 	border-top: 1px solid #e0e0e0;
+}
+
+#clear-offline-data-button {
+	background-color: var(--secondary-color);
+	color: white;
+	border: none;
+	padding: 0.5rem 1rem;
+	border-radius: var(--border-radius);
+	font-size: 0.9rem;
+	font-weight: 500;
+	cursor: pointer;
+	transition: var(--transition);
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.5rem;
+	margin-top: 0.5rem;
+}
+
+#clear-offline-data-button:hover {
+	background-color: var(--primary-color);
+	transform: translateY(-1px);
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+#clear-offline-data-button:active {
+	background-color: var(--dark-color);
+	transform: translateY(0);
 }

@@ -1,8 +1,14 @@
 import storyData from '../../data/story-data';
 import AddStoryPresenter from './add-story-presenter';
+import Swal from 'sweetalert2';
 
 export default class AddStoryPage {
     #presenter;
+    #mapElement;
+    #mapMessageElement;
+    #useCurrentLocationButton;
+    #clearLocationButton;
+    #selectedLocationTextElement;
 
     constructor() {
         this.#presenter = new AddStoryPresenter({
@@ -53,6 +59,8 @@ export default class AddStoryPage {
             </div>
             <div class="form-group">
               <label id="location-label">Location</label>
+              <div id="selected-location-text" class="selected-location-info" style="display: none; margin-bottom: 0.5rem; font-style: italic;"></div>
+              <div id="map-message" class="map-offline-message" style="display: none; padding: 1rem; text-align: center; background-color: #f0f0f0; border-radius: var(--border-radius);">Location selection is not available while offline.</div>
               <div id="map" class="story-map" aria-labelledby="location-label" role="application" aria-label="Map for selecting story location"></div>
               <div class="location-controls" role="toolbar" aria-label="Location controls">
                 <button type="button" id="use-current-location" class="location-button" aria-label="Use current location">
@@ -83,15 +91,71 @@ export default class AddStoryPage {
             addStoryContainer.style.opacity = '1';
         }
 
+        this.#mapElement = document.getElementById('map');
+        this.#mapMessageElement = document.getElementById('map-message');
+        this.#useCurrentLocationButton = document.getElementById('use-current-location');
+        this.#clearLocationButton = document.getElementById('clear-location');
+        this.#selectedLocationTextElement = document.getElementById('selected-location-text');
+
         this.initializeComponents();
+        this.addConnectionListeners();
+    }
+
+    addConnectionListeners() {
+        window.addEventListener('online', () => this.#presenter.handleConnectionChange());
+        window.addEventListener('offline', () => this.#presenter.handleConnectionChange());
+    }
+
+    removeConnectionListeners() {
+        window.removeEventListener('online', () => this.#presenter.handleConnectionChange());
+        window.removeEventListener('offline', () => this.#presenter.handleConnectionChange());
+    }
+
+    updateLocationUIForConnection(isOnline) {
+        if (!this.#mapElement || !this.#mapMessageElement || !this.#useCurrentLocationButton || !this.#clearLocationButton || !this.#selectedLocationTextElement) {
+            console.error('Location UI elements not found for connection update.');
+            return;
+        }
+
+        if (isOnline) {
+            this.#mapElement.style.display = 'block';
+            this.#mapMessageElement.style.display = 'none';
+            this.#useCurrentLocationButton.disabled = false;
+            this.#clearLocationButton.disabled = false;
+            this.#presenter.initMap();
+        } else {
+            this.#mapElement.style.display = 'none';
+            this.#mapMessageElement.style.display = 'block';
+            this.#useCurrentLocationButton.disabled = false;
+            this.#clearLocationButton.disabled = false;
+        }
+    }
+
+    updateSelectedLocationDisplay(position, isLastKnownOrOffline) {
+        if (!this.#selectedLocationTextElement) return;
+
+        if (position && typeof position.lat === 'number' && typeof position.lng === 'number') {
+            const lat = position.lat.toFixed(5);
+            const lng = position.lng.toFixed(5);
+            let text = `Selected: ${lat}, ${lng}`;
+            if (isLastKnownOrOffline && !navigator.onLine) {
+                text = `Last known (offline): ${lat}, ${lng}`;
+            } else if (isLastKnownOrOffline && navigator.onLine) {
+                text = `Current (auto-filled): ${lat}, ${lng}`;
+            }
+            this.#selectedLocationTextElement.textContent = text;
+            this.#selectedLocationTextElement.style.display = 'block';
+        } else {
+            this.#selectedLocationTextElement.textContent = '';
+            this.#selectedLocationTextElement.style.display = 'none';
+        }
     }
 
     async initializeComponents() {
         try {
-            await this.#presenter.initMap();
-
+            this.updateLocationUIForConnection(navigator.onLine);
+            await this.#presenter.checkAndAutofillLocationOnLoad();
             this.initCamera();
-
             this.addEventListeners();
         } catch (error) {
             console.error('Error initializing components:', error);
@@ -245,97 +309,101 @@ export default class AddStoryPage {
 
     addEventListeners() {
         const addStoryForm = document.getElementById('add-story-form');
-        const useCurrentLocationButton = document.getElementById('use-current-location');
-        const clearLocationButton = document.getElementById('clear-location');
+        this.#useCurrentLocationButton = document.getElementById('use-current-location');
+        this.#clearLocationButton = document.getElementById('clear-location');
 
         if (addStoryForm) {
             addStoryForm.addEventListener('submit', async (event) => {
                 event.preventDefault();
-
                 const description = document.getElementById('description').value;
                 await this.#presenter.submitStory(description);
             });
         }
 
-        if (useCurrentLocationButton) {
-            useCurrentLocationButton.addEventListener('click', () => {
+        if (this.#useCurrentLocationButton) {
+            this.#useCurrentLocationButton.addEventListener('click', () => {
                 this.#presenter.getCurrentLocation();
             });
         }
 
-        if (clearLocationButton) {
-            clearLocationButton.addEventListener('click', () => {
+        if (this.#clearLocationButton) {
+            this.#clearLocationButton.addEventListener('click', () => {
                 this.#presenter.clearLocation();
             });
         }
     }
 
     setLocationLoading(isLoading) {
-        const button = document.getElementById('use-current-location');
-        if (!button) return;
+        if (!this.#useCurrentLocationButton) return;
+        const isAutofill = !this.#useCurrentLocationButton.matches(':focus-within');
 
         if (isLoading) {
-            button.disabled = true;
-            button.innerHTML = '<i class="fas fa-spinner fa-spin" aria-hidden="true"></i> Getting Location...';
+            this.#useCurrentLocationButton.disabled = true;
+            if (!isAutofill) {
+                this.#useCurrentLocationButton.innerHTML = '<i class="fas fa-spinner fa-spin" aria-hidden="true"></i> Getting Location...';
+            }
         } else {
-            button.disabled = false;
-            button.innerHTML = '<i class="fas fa-location-arrow" aria-hidden="true"></i> Use Current Location';
+            this.#useCurrentLocationButton.disabled = false;
+            if (!isAutofill || this.#useCurrentLocationButton.textContent.includes('Getting')) {
+                this.#useCurrentLocationButton.innerHTML = '<i class="fas fa-location-arrow" aria-hidden="true"></i> Use Current Location';
+            }
+            this.updateLocationUIForConnection(navigator.onLine);
         }
     }
 
     showError(message) {
-        const addStoryContainer = document.querySelector('.add-story-container');
-        const errorElement = document.createElement('div');
-        errorElement.className = 'error-message fade-in';
-        errorElement.setAttribute('role', 'alert');
-        errorElement.setAttribute('aria-live', 'polite');
-        errorElement.innerHTML = `
-      <i class="fas fa-exclamation-circle" aria-hidden="true"></i>
-      <p>${message}</p>
-    `;
-
-        const existingError = addStoryContainer.querySelector('.error-message');
-        if (existingError) {
-            existingError.remove();
-        }
-
-        addStoryContainer.insertBefore(errorElement, addStoryContainer.firstChild);
-
-        setTimeout(() => {
-            errorElement.remove();
-        }, 3000);
+        Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: 'error',
+            title: message,
+            showConfirmButton: false,
+            timer: 3000,
+            timerProgressBar: true,
+            didOpen: (toast) => {
+                toast.addEventListener('mouseenter', Swal.stopTimer);
+                toast.addEventListener('mouseleave', Swal.resumeTimer);
+            }
+        });
     }
 
     showSuccess(message) {
-        const addStoryContainer = document.querySelector('.add-story-container');
-        const successElement = document.createElement('div');
-        successElement.className = 'success-message fade-in';
-        successElement.setAttribute('role', 'status');
-        successElement.setAttribute('aria-live', 'polite');
-        successElement.innerHTML = `
-      <i class="fas fa-check-circle" aria-hidden="true"></i>
-      <p>${message}</p>
-    `;
-
-        const existingSuccess = addStoryContainer.querySelector('.success-message');
-        if (existingSuccess) {
-            existingSuccess.remove();
-        }
-
-        addStoryContainer.insertBefore(successElement, addStoryContainer.firstChild);
-
-        setTimeout(() => {
-            successElement.remove();
-        }, 3000);
+        Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: 'success',
+            title: message,
+            showConfirmButton: false,
+            timer: 3000,
+            timerProgressBar: true,
+            didOpen: (toast) => {
+                toast.addEventListener('mouseenter', Swal.stopTimer);
+                toast.addEventListener('mouseleave', Swal.resumeTimer);
+            }
+        });
     }
 
     resetForm() {
         const addStoryForm = document.getElementById('add-story-form');
-        addStoryForm.reset();
-        document.getElementById('captured-photo').style.display = 'none';
+        if (addStoryForm) {
+            addStoryForm.reset();
+        }
+        const capturedPhotoElement = document.getElementById('captured-photo');
+        if (capturedPhotoElement) {
+            capturedPhotoElement.style.display = 'none';
+            capturedPhotoElement.src = '#';
+        }
+        const capturedPhotoContainer = document.getElementById('captured-photo-container');
+        if (capturedPhotoContainer) {
+            capturedPhotoContainer.style.display = 'none';
+        }
+        if (this.#presenter) {
+            this.#presenter.clearLocation();
+        }
     }
 
     destroy() {
+        this.removeConnectionListeners();
         try {
             const video = document.querySelector('#camera-preview video');
             if (video && video.srcObject) {
@@ -348,20 +416,6 @@ export default class AddStoryPage {
                 this.#presenter.destroy();
             }
 
-            const addStoryForm = document.getElementById('add-story-form');
-            if (addStoryForm) {
-                addStoryForm.removeEventListener('submit', this.handleSubmit);
-            }
-
-            const useCurrentLocationButton = document.getElementById('use-current-location');
-            if (useCurrentLocationButton) {
-                useCurrentLocationButton.removeEventListener('click', this.handleUseCurrentLocation);
-            }
-
-            const clearLocationButton = document.getElementById('clear-location');
-            if (clearLocationButton) {
-                clearLocationButton.removeEventListener('click', this.handleClearLocation);
-            }
         } catch (error) {
             console.error('Error during cleanup:', error);
         }

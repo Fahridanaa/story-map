@@ -5,12 +5,11 @@ import AddStoryPage from '../pages/add-story/add-story-page';
 import StoryDetailPage from '../pages/story-detail/story-detail-page';
 
 const routes = {
-  '/': new HomePage(),
-  '/login': new LoginPage(),
-  '/register': new RegisterPage(),
-  '/add-story': new AddStoryPage(),
-  '/story-detail': new StoryDetailPage(),
-  '/story/:id': new StoryDetailPage(),
+  '/': HomePage,
+  '/login': LoginPage,
+  '/register': RegisterPage,
+  '/add-story': AddStoryPage,
+  '/story/:id': StoryDetailPage,
 };
 
 export default routes;

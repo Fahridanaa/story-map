@@ -2,9 +2,25 @@ import '../styles/styles.css';
 import '../styles/accessibility.css';
 import '../styles/view-transitions.css';
 
+import 'leaflet/dist/leaflet.css';
+import '@fortawesome/fontawesome-free/css/all.min.css';
+
+import L from 'leaflet';
+window.L = L;
+
 import App from './pages/app';
 import authModel from './data/auth-model';
 import { updateNavigation } from './utils/navigation';
+import CONFIG from './config';
+import { registerSW } from 'virtual:pwa-register';
+import {
+  isServiceWorkerAvailable,
+  isPushManagerAvailable,
+  handlePwaRegistered,
+} from './utils';
+import { unsubscribeFromPushNotifications } from './utils/notification-helper';
+import { clearAllStories } from './data/idb-helper';
+import Swal from 'sweetalert2';
 
 let app;
 
@@ -19,19 +35,46 @@ document.addEventListener('DOMContentLoaded', async () => {
   updateNavigation();
   setupLogout();
   setupDrawerButton();
+  setupClearOfflineDataButton();
 
   window.addEventListener('hashchange', async () => {
     await app.renderPage();
     updateNavigation();
   });
+
+  if (isServiceWorkerAvailable() && isPushManagerAvailable()) {
+    const sw = registerSW({
+      async onRegistered(registration) {
+        if (registration) {
+          await handlePwaRegistered(registration, authModel, CONFIG);
+        }
+      },
+    });
+  }
 });
+
+async function handleLogoutUnsubscription() {
+  if (isServiceWorkerAvailable() && isPushManagerAvailable()) {
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      if (registration) {
+        await unsubscribeFromPushNotifications(registration, authModel, CONFIG);
+      }
+    } catch (error) {
+      console.error('Error saat mencoba unsubscribe notifikasi waktu logout:', error);
+    }
+  }
+}
 
 function setupLogout() {
   const logoutLink = document.getElementById('logout-link');
   if (!logoutLink) return;
 
-  logoutLink.addEventListener('click', (event) => {
+  logoutLink.addEventListener('click', async (event) => {
     event.preventDefault();
+
+    await handleLogoutUnsubscription();
+
     authModel.logout();
     updateNavigation();
 
@@ -55,4 +98,34 @@ function setupDrawerButton() {
     const isExpanded = drawerButton.getAttribute('aria-expanded') === 'true';
     drawerButton.setAttribute('aria-expanded', !isExpanded);
   });
+}
+
+function setupClearOfflineDataButton() {
+  const clearButton = document.getElementById('clear-offline-data-button');
+  if (clearButton) {
+    clearButton.addEventListener('click', async () => {
+      try {
+        await clearAllStories();
+        Swal.fire({
+          toast: true,
+          position: 'top-end',
+          icon: 'success',
+          title: 'Data cerita offline berhasil dihapus!',
+          showConfirmButton: false,
+          timer: 3000,
+          timerProgressBar: true
+        });
+      } catch (error) {
+        Swal.fire({
+          toast: true,
+          position: 'top-end',
+          icon: 'error',
+          title: 'Gagal menghapus data cerita offline.',
+          showConfirmButton: false,
+          timer: 3000,
+          timerProgressBar: true
+        });
+      }
+    });
+  }
 }

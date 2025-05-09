@@ -1,5 +1,6 @@
 import LoginPresenter from './login-presenter';
 import authModel from '../../data/auth-model';
+import Swal from 'sweetalert2';
 
 export default class LoginPage {
   #presenter;
@@ -12,6 +13,10 @@ export default class LoginPage {
   }
 
   async render() {
+    if (authModel.isAuthenticated()) {
+      window.location.hash = '#/';
+      return '';
+    }
     return `
       <div class="login-page" id="login-page">
         <div class="login-container">
@@ -78,8 +83,7 @@ export default class LoginPage {
         } catch (error) {
           this.showError(error.message || 'Login failed. Please try again.');
         } finally {
-          const form = document.getElementById('login-form');
-          if (form) {
+          if (document.getElementById('login-form')) {
             this.setLoading(false);
           }
         }
@@ -123,57 +127,35 @@ export default class LoginPage {
   }
 
   showError(message) {
-    const loginContainer = document.querySelector('.login-container');
-    if (!loginContainer) return;
-
-    const errorElement = document.createElement('div');
-    errorElement.className = 'error-message fade-in';
-    errorElement.setAttribute('role', 'alert');
-    errorElement.setAttribute('aria-live', 'polite');
-    errorElement.innerHTML = `
-      <i class="fas fa-exclamation-circle" aria-hidden="true"></i>
-      <p>${message}</p>
-    `;
-
-    const existingError = loginContainer.querySelector('.error-message');
-    if (existingError) {
-      existingError.remove();
-    }
-
-    loginContainer.insertBefore(errorElement, loginContainer.firstChild);
-
-    setTimeout(() => {
-      if (errorElement.parentNode === loginContainer) {
-        errorElement.remove();
+    Swal.fire({
+      toast: true,
+      position: 'top-end',
+      icon: 'error',
+      title: message,
+      showConfirmButton: false,
+      timer: 3000,
+      timerProgressBar: true,
+      didOpen: (toast) => {
+        toast.addEventListener('mouseenter', Swal.stopTimer);
+        toast.addEventListener('mouseleave', Swal.resumeTimer);
       }
-    }, 3000);
+    });
   }
 
   showSuccess(message) {
-    const loginContainer = document.querySelector('.login-container');
-    if (!loginContainer) return;
-
-    const successElement = document.createElement('div');
-    successElement.className = 'success-message fade-in';
-    successElement.setAttribute('role', 'status');
-    successElement.setAttribute('aria-live', 'polite');
-    successElement.innerHTML = `
-      <i class="fas fa-check-circle" aria-hidden="true"></i>
-      <p>${message}</p>
-    `;
-
-    const existingSuccess = loginContainer.querySelector('.success-message');
-    if (existingSuccess) {
-      existingSuccess.remove();
-    }
-
-    loginContainer.insertBefore(successElement, loginContainer.firstChild);
-
-    setTimeout(() => {
-      if (successElement.parentNode === loginContainer) {
-        successElement.remove();
+    Swal.fire({
+      toast: true,
+      position: 'top-end',
+      icon: 'success',
+      title: message,
+      showConfirmButton: false,
+      timer: 2000,
+      timerProgressBar: true,
+      didOpen: (toast) => {
+        toast.addEventListener('mouseenter', Swal.stopTimer);
+        toast.addEventListener('mouseleave', Swal.resumeTimer);
       }
-    }, 3000);
+    });
   }
 
   clearError() {

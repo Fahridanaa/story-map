@@ -27,9 +27,13 @@ export default class HomePage {
               <i class="fas fa-spinner fa-spin" aria-hidden="true"></i>
               <p>Loading stories...</p>
             </div>
-            <button id="load-more" class="load-more-button" style="display: none;" aria-label="Load more stories">
-              Load More Stories
-            </button>
+            <div id="load-more-container" class="load-more-controls">
+              <button id="load-more" class="load-more-button" style="display: none;" aria-label="Load more stories">
+                Load More Stories
+              </button>
+              <p id="end-of-stories-message" class="end-message" style="display: none;">You have reached the end of the stories.</p>
+              <p id="offline-message" class="offline-message" style="display: none;">Load more is not available while offline.</p>
+            </div>
           </section>
         </div>
       </div>
@@ -43,9 +47,16 @@ export default class HomePage {
     }
 
     this.#presenter.initMap();
-    await this.#presenter.loadStories();
+    await this.#presenter.loadInitialStories();
     this.addEventListeners();
-    this.#presenter.restoreScrollPosition();
+
+    if (this.#presenter.isStateRestored) {
+      this.#presenter.applyRestoredScrollPosition();
+    }
+    this.updateLoadMoreButtonVisibility();
+
+    window.addEventListener('online', () => this.updateLoadMoreButtonVisibility());
+    window.addEventListener('offline', () => this.updateLoadMoreButtonVisibility());
   }
 
   renderStories(stories) {
@@ -58,22 +69,49 @@ export default class HomePage {
 
     storyList.innerHTML = '';
 
-    stories.forEach(story => {
-      const storyCardElement = document.createElement('story-card');
-      storyCardElement.setStory(story);
-      storyList.appendChild(storyCardElement);
-    });
+    if (stories && stories.length > 0) {
+      stories.forEach(story => {
+        const storyCardElement = document.createElement('story-card');
+        storyCardElement.setStory(story);
+        storyList.appendChild(storyCardElement);
+      });
+    } else if (!this.#presenter.isLoading) {
+      storyList.innerHTML = '<p class="no-stories-message">No stories available at the moment.</p>';
+    }
 
     this.#presenter.updateMap(stories);
+    this.updateLoadMoreButtonVisibility();
+  }
+
+  updateLoadMoreButtonVisibility() {
+    if (!this.#presenter) return;
 
     const loadMoreButton = document.getElementById('load-more');
-    if (loadMoreButton) {
+    const endOfStoriesMessage = document.getElementById('end-of-stories-message');
+    const offlineMessage = document.getElementById('offline-message');
+
+    if (!loadMoreButton || !endOfStoriesMessage || !offlineMessage) {
+      return;
+    }
+
+    const isOnline = navigator.onLine;
+    const hasMore = this.#presenter.hasMoreStories;
+
+    if (!isOnline) {
+      loadMoreButton.style.display = 'none';
+      endOfStoriesMessage.style.display = 'none';
+      offlineMessage.style.display = 'block';
+      loadMoreButton.disabled = true;
+    } else if (hasMore) {
       loadMoreButton.style.display = 'block';
+      loadMoreButton.disabled = false;
+      endOfStoriesMessage.style.display = 'none';
+      offlineMessage.style.display = 'none';
     } else {
-      const endMessage = document.createElement('p');
-      endMessage.className = 'end-message';
-      endMessage.textContent = 'You have reached the end of the stories.';
-      loadMoreButton.parentNode.replaceChild(endMessage, loadMoreButton);
+      loadMoreButton.style.display = 'none';
+      loadMoreButton.disabled = true;
+      endOfStoriesMessage.style.display = 'block';
+      offlineMessage.style.display = 'none';
     }
   }
 
@@ -82,30 +120,35 @@ export default class HomePage {
 
     if (loadMoreButton) {
       loadMoreButton.addEventListener('click', () => {
-        this.#presenter.loadMoreStories();
+        if (!navigator.onLine) {
+          alert("You are offline. Can't load more stories.");
+          this.updateLoadMoreButtonVisibility();
+          return;
+        }
+        if (this.#presenter.hasMoreStories) {
+          this.#presenter.loadMoreStories();
+        } else {
+          this.updateLoadMoreButtonVisibility();
+        }
       });
     }
 
-    // Add event listeners for story cards
     document.addEventListener('click', (event) => {
       const viewDetailsLink = event.target.closest('.view-details-link');
       if (viewDetailsLink) {
-        // Save scroll position before navigation
-        console.log('View details link clicked, saving scroll position');
-        this.#presenter.saveScrollPosition();
+        console.log('View details link clicked, saving page state');
+        this.#presenter.savePageState();
       }
     });
 
-    // Also save scroll position when scrolling
     const storiesContainer = document.querySelector('.stories-container');
     if (storiesContainer) {
       storiesContainer.addEventListener('scroll', () => {
-        // Debounce the scroll event to avoid too many saves
         if (this.scrollTimeout) {
           clearTimeout(this.scrollTimeout);
         }
         this.scrollTimeout = setTimeout(() => {
-          this.#presenter.saveScrollPosition();
+          this.#presenter.savePageState();
         }, 100);
       });
     }
@@ -115,6 +158,19 @@ export default class HomePage {
     const loadingIndicator = document.getElementById('loading-indicator');
     if (loadingIndicator) {
       loadingIndicator.style.display = show ? 'flex' : 'none';
+    }
+    const loadMoreButton = document.getElementById('load-more');
+    if (loadMoreButton) {
+      loadMoreButton.disabled = show;
+      if (show) loadMoreButton.style.display = 'none';
+    }
+    const endOfStoriesMessage = document.getElementById('end-of-stories-message');
+    const offlineMessage = document.getElementById('offline-message');
+    if (show) {
+      if (endOfStoriesMessage) endOfStoriesMessage.style.display = 'none';
+      if (offlineMessage) offlineMessage.style.display = 'none';
+    } else {
+      this.updateLoadMoreButtonVisibility();
     }
   }
 

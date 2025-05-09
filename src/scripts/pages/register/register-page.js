@@ -1,5 +1,6 @@
 import RegisterPresenter from './register-presenter';
 import authModel from '../../data/auth-model';
+import Swal from 'sweetalert2';
 
 export default class RegisterPage {
   #presenter;
@@ -12,6 +13,10 @@ export default class RegisterPage {
   }
 
   async render() {
+    if (authModel.isAuthenticated()) {
+      window.location.hash = '#/';
+      return '';
+    }
     return `
       <div class="register-page" id="register-page">
         <div class="register-container">
@@ -87,15 +92,9 @@ export default class RegisterPage {
         const password = document.getElementById('password').value;
         const confirmPassword = document.getElementById('confirmPassword').value;
 
-
         this.setLoading(true);
         this.#presenter.register(name, email, password, confirmPassword)
-          .then(() => {
-            if (document.getElementById('register-form')) {
-              this.setLoading(false);
-            }
-          })
-          .catch(() => {
+          .finally(() => {
             if (document.getElementById('register-form')) {
               this.setLoading(false);
             }
@@ -140,48 +139,34 @@ export default class RegisterPage {
   }
 
   showError(message) {
-    const registerContainer = document.querySelector('.register-container');
-    const errorElement = document.createElement('div');
-    errorElement.className = 'error-message fade-in';
-    errorElement.setAttribute('role', 'alert');
-    errorElement.setAttribute('aria-live', 'polite');
-    errorElement.innerHTML = `
-      <i class="fas fa-exclamation-circle" aria-hidden="true"></i>
-      <p>${message}</p>
-    `;
-
-    const existingError = registerContainer.querySelector('.error-message');
-    if (existingError) {
-      existingError.remove();
-    }
-
-    registerContainer.insertBefore(errorElement, registerContainer.firstChild);
-
-    setTimeout(() => {
-      errorElement.remove();
-    }, 3000);
+    Swal.fire({
+      toast: true,
+      position: 'top-end',
+      icon: 'error',
+      title: message,
+      showConfirmButton: false,
+      timer: 3000,
+      timerProgressBar: true,
+      didOpen: (toast) => {
+        toast.addEventListener('mouseenter', Swal.stopTimer);
+        toast.addEventListener('mouseleave', Swal.resumeTimer);
+      }
+    });
   }
 
   showSuccess(message) {
-    const registerContainer = document.querySelector('.register-container');
-    const successElement = document.createElement('div');
-    successElement.className = 'success-message fade-in';
-    successElement.setAttribute('role', 'status');
-    successElement.setAttribute('aria-live', 'polite');
-    successElement.innerHTML = `
-      <i class="fas fa-check-circle" aria-hidden="true"></i>
-      <p>${message}</p>
-    `;
-
-    const existingSuccess = registerContainer.querySelector('.success-message');
-    if (existingSuccess) {
-      existingSuccess.remove();
-    }
-
-    registerContainer.insertBefore(successElement, registerContainer.firstChild);
-
-    setTimeout(() => {
-      successElement.remove();
-    }, 3000);
+    Swal.fire({
+      toast: true,
+      position: 'top-end',
+      icon: 'success',
+      title: message,
+      showConfirmButton: false,
+      timer: 2000,
+      timerProgressBar: true,
+      didOpen: (toast) => {
+        toast.addEventListener('mouseenter', Swal.stopTimer);
+        toast.addEventListener('mouseleave', Swal.resumeTimer);
+      }
+    });
   }
 }

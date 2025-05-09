@@ -12,6 +12,9 @@ export default class HomePresenter {
     #baseLayers;
     #overlayLayers;
     #lastScrollPosition;
+    #hasMoreStories;
+    #pageSize;
+    #isStateRestored;
 
     constructor({ model, view }) {
         this.#model = model;
@@ -24,35 +27,127 @@ export default class HomePresenter {
         this.#baseLayers = {};
         this.#overlayLayers = {};
         this.#lastScrollPosition = 0;
+        this.#hasMoreStories = true;
+        this.#pageSize = 10;
+        this.#isStateRestored = false;
     }
 
-    async loadStories() {
+    get hasMoreStories() {
+        return this.#hasMoreStories;
+    }
+
+    get isLoading() {
+        return this.#isLoading;
+    }
+
+    get isStateRestored() {
+        return this.#isStateRestored;
+    }
+
+    restorePageState() {
+        try {
+            const savedStories = localStorage.getItem('homeStories');
+            const savedPage = localStorage.getItem('homeCurrentPage');
+            const savedScroll = localStorage.getItem('homeScrollPosition');
+
+            if (savedStories && savedPage) {
+                this.#stories = JSON.parse(savedStories);
+                this.#currentPage = parseInt(savedPage, 10);
+                this.#lastScrollPosition = savedScroll ? parseInt(savedScroll, 10) : 0;
+
+                this.#hasMoreStories = (this.#stories.length === this.#currentPage * this.#pageSize);
+
+                this.#isStateRestored = true;
+                return true;
+            }
+        } catch (error) {
+            localStorage.removeItem('homeStories');
+            localStorage.removeItem('homeCurrentPage');
+            localStorage.removeItem('homeScrollPosition');
+        }
+        this.#isStateRestored = false;
+        return false;
+    }
+
+    savePageState() {
+        const storiesContainer = document.querySelector('.stories-container');
+        if (storiesContainer) {
+            this.#lastScrollPosition = storiesContainer.scrollTop;
+            localStorage.setItem('homeScrollPosition', this.#lastScrollPosition);
+        }
+        const maxStoriesToStore = this.#pageSize * 5;
+        const storiesToStore = this.#stories.slice(0, maxStoriesToStore);
+
+        localStorage.setItem('homeStories', JSON.stringify(storiesToStore));
+        localStorage.setItem('homeCurrentPage', this.#currentPage);
+        localStorage.setItem('homeHasMoreStories', this.#hasMoreStories);
+    }
+
+    applyRestoredScrollPosition() {
+        if (this.#isStateRestored && this.#lastScrollPosition > 0) {
+            const storiesContainer = document.querySelector('.stories-container');
+            if (storiesContainer) {
+                setTimeout(() => {
+                    storiesContainer.scrollTop = this.#lastScrollPosition;
+                }, 100);
+            }
+        }
+    }
+
+    async loadInitialStories() {
+        if (this.restorePageState()) {
+            this.#view.renderStories(this.#stories);
+        } else {
+            this.#currentPage = 1;
+            this.#stories = [];
+            this.#hasMoreStories = true;
+            await this.loadStories();
+        }
+    }
+
+    async loadStories(isLoadMore = false) {
         if (this.#isLoading) return;
+        if (isLoadMore && !this.#hasMoreStories) {
+            this.#view.updateLoadMoreButtonVisibility();
+            return;
+        }
 
         this.#isLoading = true;
         this.#view.showLoadingIndicator(true);
 
         try {
-            const stories = await this.#model.getStories(this.#currentPage);
+            const fetchedStories = await this.#model.getStories(this.#currentPage, this.#pageSize);
 
-            if (this.#currentPage === 1) {
-                this.#stories = stories;
+            if (!fetchedStories || fetchedStories.length === 0) {
+                if (!isLoadMore) {
+                    this.#stories = this.#isStateRestored ? this.#stories : [];
+                }
+                this.#hasMoreStories = false;
             } else {
-                const existingIds = new Set(this.#stories.map(story => story.id));
+                if (!isLoadMore && !this.#isStateRestored) {
+                    this.#stories = fetchedStories;
+                } else if (isLoadMore) {
+                    const existingIds = new Set(this.#stories.map(story => story.id));
+                    const newStories = fetchedStories.filter(story => !existingIds.has(story.id));
+                    if (newStories.length > 0) {
+                        this.#stories = [...this.#stories, ...newStories];
+                    }
+                } else if (this.#isStateRestored && !isLoadMore) {
+                }
 
-                const newStories = stories.filter(story => !existingIds.has(story.id));
-
-                if (newStories.length != 0) {
-                    this.#stories = [...this.#stories, ...newStories];
+                if (fetchedStories.length < this.#pageSize) {
+                    this.#hasMoreStories = false;
                 }
             }
-
             this.#view.renderStories(this.#stories);
         } catch (error) {
-            console.error('Error loading stories:', error);
             this.#view.showError('Failed to load stories. Please try again later.');
+            if (!navigator.onLine) {
+                this.#hasMoreStories = false;
+            }
         } finally {
             this.#isLoading = false;
+            this.#isStateRestored = false;
             this.#view.showLoadingIndicator(false);
         }
     }
@@ -61,7 +156,6 @@ export default class HomePresenter {
         const mapContainer = document.getElementById('map-content');
 
         if (!mapContainer) {
-            console.error('Map container not found');
             return;
         }
 
@@ -161,32 +255,14 @@ export default class HomePresenter {
     }
 
     loadMoreStories() {
-        this.#currentPage++;
-        this.loadStories();
+        if (!this.#isLoading && this.#hasMoreStories) {
+            this.#currentPage++;
+            this.loadStories(true);
+        }
     }
 
     isUserAuthenticated() {
         return authModel.isAuthenticated();
-    }
-
-    saveScrollPosition() {
-        const storiesContainer = document.querySelector('.stories-container');
-        if (storiesContainer) {
-            this.#lastScrollPosition = storiesContainer.scrollTop;
-            localStorage.setItem('homeScrollPosition', this.#lastScrollPosition);
-        }
-    }
-
-    restoreScrollPosition() {
-        const storiesContainer = document.querySelector('.stories-container');
-        if (storiesContainer) {
-            const savedPosition = localStorage.getItem('homeScrollPosition');
-            if (savedPosition) {
-                setTimeout(() => {
-                    storiesContainer.scrollTop = parseInt(savedPosition, 10);
-                }, 100);
-            }
-        }
     }
 
     destroy() {
