@@ -1,0 +1,62 @@
+.skip-link {
+	position: absolute;
+	top: -40px;
+	left: 0;
+	background: #000;
+	color: white;
+	padding: 8px;
+	z-index: 100;
+	transition: top 0.3s;
+}
+
+.skip-link:focus {
+	top: 0;
+}
+
+.visually-hidden {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
+	border: 0;
+}
+
+:focus {
+	outline: 3px solid #4a90e2;
+	outline-offset: 2px;
+}
+
+@media (prefers-contrast: high) {
+	:root {
+		--primary-color: #0000ff;
+		--secondary-color: #ff0000;
+		--text-color: #000000;
+		--background-color: #ffffff;
+	}
+
+	a {
+		text-decoration: underline;
+	}
+
+	button,
+	.button {
+		border: 2px solid #000;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	* {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+		scroll-behavior: auto !important;
+	}
+
+	.fade-in {
+		animation: none !important;
+	}
+}

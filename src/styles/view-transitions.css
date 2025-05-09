@@ -1,0 +1,183 @@
+@keyframes fade-in {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+
+@keyframes fade-out {
+	from {
+		opacity: 1;
+	}
+	to {
+		opacity: 0;
+	}
+}
+
+@keyframes zoom-in {
+	from {
+		transform: scale(0.5);
+		opacity: 0;
+	}
+	to {
+		transform: scale(1);
+		opacity: 1;
+	}
+}
+
+@keyframes zoom-out {
+	from {
+		transform: scale(1);
+		opacity: 1;
+	}
+	to {
+		transform: scale(0.5);
+		opacity: 0;
+	}
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+	animation: none;
+	mix-blend-mode: normal;
+}
+
+::view-transition-old(main-content),
+::view-transition-new(main-content) {
+	animation: none;
+	mix-blend-mode: normal;
+}
+
+::view-transition-old(navigation),
+::view-transition-new(navigation) {
+	animation: none;
+	mix-blend-mode: normal;
+}
+
+.home-page {
+	view-transition-name: home-page;
+}
+
+.login-page {
+	view-transition-name: login-page;
+}
+
+.register-page {
+	view-transition-name: register-page;
+}
+
+.add-story-page {
+	view-transition-name: add-story-page;
+}
+
+.story-detail-page {
+	view-transition-name: story-detail-page;
+}
+
+.story-card {
+	view-transition-name: story-card;
+}
+
+.story-detail-image {
+	view-transition-name: story-detail-image;
+}
+
+::view-transition-old(home-page),
+::view-transition-new(home-page) {
+	animation: 300ms cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+::view-transition-old(login-page),
+::view-transition-new(login-page) {
+	animation: 300ms cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+::view-transition-old(register-page),
+::view-transition-new(register-page) {
+	animation: 300ms cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+::view-transition-old(add-story-page),
+::view-transition-new(add-story-page) {
+	animation: 300ms cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+::view-transition-old(story-detail-page),
+::view-transition-new(story-detail-page) {
+	animation: 300ms cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+::view-transition-old(story-card),
+::view-transition-new(story-card) {
+	animation: 300ms cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+::view-transition-old(story-detail-image),
+::view-transition-new(story-detail-image) {
+	animation: 300ms cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+::view-transition-new(login-page) {
+	animation-name: fade-in;
+}
+
+::view-transition-old(login-page) {
+	animation-name: fade-out;
+}
+
+::view-transition-new(register-page) {
+	animation-name: fade-in;
+}
+
+::view-transition-old(register-page) {
+	animation-name: fade-out;
+}
+
+::view-transition-new(home-page) {
+	animation-name: fade-in;
+}
+
+::view-transition-old(home-page) {
+	animation-name: fade-out;
+}
+
+::view-transition-new(story-detail-page) {
+	animation-name: zoom-in;
+}
+
+::view-transition-old(story-detail-page) {
+	animation-name: zoom-out;
+}
+
+::view-transition-new(add-story-page) {
+	animation-name: fade-in;
+}
+
+::view-transition-old(add-story-page) {
+	animation-name: fade-out;
+}
+
+::view-transition-old(story-card) {
+	animation-name: zoom-out;
+}
+
+::view-transition-new(story-detail-image) {
+	animation-name: zoom-in;
+}
+
+::view-transition-old(story-detail-image) {
+	animation-name: zoom-out;
+}
+
+::view-transition-new(story-card) {
+	animation-name: zoom-in;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	::view-transition-old(*),
+	::view-transition-new(*) {
+		animation: none !important;
+	}
+}
