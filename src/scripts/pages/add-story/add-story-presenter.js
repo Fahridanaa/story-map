@@ -14,7 +14,7 @@ export default class AddStoryPresenter {
     #cameraStream;
     #capturedPhoto;
     #isLoading;
-    #lastKnownLocation; // To store { lat, lng }
+    #lastKnownLocation;
 
     constructor({ model, view }) {
         this.#model = model;
@@ -56,7 +56,7 @@ export default class AddStoryPresenter {
             const permissionStatus = await navigator.permissions.query({ name: 'geolocation' });
             if (permissionStatus.state === 'granted') {
                 console.log('Geolocation permission granted, attempting to autofill location.');
-                await this.getCurrentLocation(true); // Pass a flag to indicate it's an auto-fetch
+                await this.getCurrentLocation(true);
             } else if (permissionStatus.state === 'prompt') {
                 console.log('Geolocation permission prompt will be shown on user interaction.');
             } else {
