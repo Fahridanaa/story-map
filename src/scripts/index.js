@@ -110,17 +110,21 @@ function setupClearOfflineDataButton() {
           toast: true,
           position: 'top-end',
           icon: 'success',
-          title: 'Data cerita offline berhasil dihapus!',
+          title: 'Offline story data and saved stories have been cleared!',
           showConfirmButton: false,
           timer: 3000,
           timerProgressBar: true
         });
+
+        if (window.location.hash === '#/saved-stories') {
+          window.location.reload();
+        }
       } catch (error) {
         Swal.fire({
           toast: true,
           position: 'top-end',
           icon: 'error',
-          title: 'Gagal menghapus data cerita offline.',
+          title: 'Failed to clear offline story data.',
           showConfirmButton: false,
           timer: 3000,
           timerProgressBar: true

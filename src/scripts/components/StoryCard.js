@@ -77,9 +77,15 @@ export class StoryCard extends HTMLElement {
                     margin-right: 0.5rem;
                 }
 
+                .story-actions {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-top: 1rem;
+                }
+
                 .view-details-link {
                     display: inline-block;
-                    margin-top: 1rem;
                     color: #4a6fa5;
                     text-decoration: none;
                     font-weight: 500;
@@ -89,6 +95,33 @@ export class StoryCard extends HTMLElement {
                 .view-details-link:hover {
                     color: #166088;
                     text-decoration: underline;
+                }
+
+                .save-button {
+                    background-color: #f8f9fa;
+                    border: 1px solid #dee2e6;
+                    border-radius: 4px;
+                    padding: 0.375rem 0.75rem;
+                    font-size: 0.875rem;
+                    color: #495057;
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                    display: flex;
+                    align-items: center;
+                }
+
+                .save-button:hover {
+                    background-color: #e9ecef;
+                }
+
+                .save-button.saved {
+                    background-color: #e3f2fd;
+                    color: #0d6efd;
+                    border-color: #0d6efd;
+                }
+
+                .save-button i {
+                    margin-right: 0.5rem;
                 }
 
                 @keyframes slideIn {
@@ -119,10 +152,110 @@ export class StoryCard extends HTMLElement {
                         <span>Location: ${this.story.lat}, ${this.story.lon}</span>
                     </div>
 
-                    <a class="view-details-link" href="#/story/${this.story.id}" data-story-id="${this.story.id}">View Details</a>
+                    <div class="story-actions">
+                        <a class="view-details-link" href="#/story/${this.story.id}" data-story-id="${this.story.id}">View Details</a>
+                        <button class="save-button" id="save-button-${this.story.id}" data-story-id="${this.story.id}">
+                            <i class="far fa-bookmark"></i>
+                            <span>Save</span>
+                        </button>
+                    </div>
                 </div>
             </div>
         `;
+
+        this._setupSaveButton();
+    }
+
+    _setupSaveButton() {
+        const saveButton = this.shadowRoot.querySelector(`#save-button-${this.story.id}`);
+        if (saveButton) {
+            // Check if story is already saved
+            this._checkIfSaved().then(isSaved => {
+                if (isSaved) {
+                    this._updateSaveButtonUI(true);
+                }
+            });
+
+            saveButton.addEventListener('click', async (event) => {
+                event.preventDefault();
+                await this._toggleSaveStory();
+            });
+        }
+    }
+
+    async _checkIfSaved() {
+        try {
+            const { getStory } = await import('../data/idb-helper');
+            const savedStory = await getStory(this.story.id);
+            return !!savedStory;
+        } catch (error) {
+            console.error('Error checking if story is saved:', error);
+            return false;
+        }
+    }
+
+    async _toggleSaveStory() {
+        try {
+            const { getStory, putStory, deleteStory } = await import('../data/idb-helper');
+            const savedStory = await getStory(this.story.id);
+
+            if (savedStory) {
+                // Story is already saved, so delete it
+                await deleteStory(this.story.id);
+                this._updateSaveButtonUI(false);
+                this._showToast('Story removed from saved stories');
+            } else {
+                // Story is not saved, so save it
+                await putStory(this.story);
+                this._updateSaveButtonUI(true);
+                this._showToast('Story saved successfully');
+            }
+        } catch (error) {
+            console.error('Error toggling save story:', error);
+            this._showToast('Failed to save story. Please try again.');
+        }
+    }
+
+    _updateSaveButtonUI(isSaved) {
+        const saveButton = this.shadowRoot.querySelector(`#save-button-${this.story.id}`);
+        if (saveButton) {
+            if (isSaved) {
+                saveButton.classList.add('saved');
+                saveButton.innerHTML = '<i class="fas fa-bookmark"></i><span>Saved</span>';
+            } else {
+                saveButton.classList.remove('saved');
+                saveButton.innerHTML = '<i class="far fa-bookmark"></i><span>Save</span>';
+            }
+        }
+    }
+
+    _showToast(message) {
+        // Create toast element if it doesn't exist
+        let toast = document.getElementById('toast-message');
+        if (!toast) {
+            toast = document.createElement('div');
+            toast.id = 'toast-message';
+            toast.style.position = 'fixed';
+            toast.style.bottom = '20px';
+            toast.style.left = '50%';
+            toast.style.transform = 'translateX(-50%)';
+            toast.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+            toast.style.color = 'white';
+            toast.style.padding = '10px 20px';
+            toast.style.borderRadius = '4px';
+            toast.style.zIndex = '1000';
+            toast.style.transition = 'opacity 0.3s ease';
+            document.body.appendChild(toast);
+        }
+
+        // Set message and show toast
+        toast.textContent = message;
+        toast.style.opacity = '1';
+
+        // Hide toast after 3 seconds
+        setTimeout(() => {
+            toast.style.opacity = '0';
+        }, 3000);
     }
 }
 

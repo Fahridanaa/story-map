@@ -88,6 +88,13 @@ export default class StoryDetailPage {
                 <time datetime="${story.createdAt}">Posted on: ${formattedDate}</time>
               </div>
             </footer>
+
+            <div class="story-detail-actions">
+              <button id="save-story-button" class="save-button" data-story-id="${story.id}">
+                <i class="far fa-bookmark"></i>
+                <span>Save Story</span>
+              </button>
+            </div>
           </div>
         </section>
       </article>
@@ -97,10 +104,100 @@ export default class StoryDetailPage {
     if (backButton) {
       backButton.addEventListener('click', (event) => {
         event.preventDefault();
-
         window.location.hash = '/';
       });
     }
+
+    // Setup save button
+    this._setupSaveButton(story);
+  }
+
+  async _setupSaveButton(story) {
+    const saveButton = document.getElementById('save-story-button');
+    if (!saveButton) return;
+
+    // Check if story is already saved
+    const isSaved = await this._checkIfSaved(story.id);
+    this._updateSaveButtonUI(isSaved);
+
+    saveButton.addEventListener('click', async () => {
+      await this._toggleSaveStory(story);
+    });
+  }
+
+  async _checkIfSaved(storyId) {
+    try {
+      const { getStory } = await import('../../data/idb-helper');
+      const savedStory = await getStory(storyId);
+      return !!savedStory;
+    } catch (error) {
+      console.error('Error checking if story is saved:', error);
+      return false;
+    }
+  }
+
+  async _toggleSaveStory(story) {
+    try {
+      const { getStory, putStory, deleteStory } = await import('../../data/idb-helper');
+      const savedStory = await getStory(story.id);
+
+      if (savedStory) {
+        // Story is already saved, so delete it
+        await deleteStory(story.id);
+        this._updateSaveButtonUI(false);
+        this._showToast('Story removed from saved stories');
+      } else {
+        // Story is not saved, so save it
+        await putStory(story);
+        this._updateSaveButtonUI(true);
+        this._showToast('Story saved successfully');
+      }
+    } catch (error) {
+      console.error('Error toggling save story:', error);
+      this._showToast('Failed to save story. Please try again.');
+    }
+  }
+
+  _updateSaveButtonUI(isSaved) {
+    const saveButton = document.getElementById('save-story-button');
+    if (saveButton) {
+      if (isSaved) {
+        saveButton.classList.add('saved');
+        saveButton.innerHTML = '<i class="fas fa-bookmark"></i><span>Saved</span>';
+      } else {
+        saveButton.classList.remove('saved');
+        saveButton.innerHTML = '<i class="far fa-bookmark"></i><span>Save Story</span>';
+      }
+    }
+  }
+
+  _showToast(message) {
+    // Create toast element if it doesn't exist
+    let toast = document.getElementById('toast-message');
+    if (!toast) {
+      toast = document.createElement('div');
+      toast.id = 'toast-message';
+      toast.style.position = 'fixed';
+      toast.style.bottom = '20px';
+      toast.style.left = '50%';
+      toast.style.transform = 'translateX(-50%)';
+      toast.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+      toast.style.color = 'white';
+      toast.style.padding = '10px 20px';
+      toast.style.borderRadius = '4px';
+      toast.style.zIndex = '1000';
+      toast.style.transition = 'opacity 0.3s ease';
+      document.body.appendChild(toast);
+    }
+
+    // Set message and show toast
+    toast.textContent = message;
+    toast.style.opacity = '1';
+
+    // Hide toast after 3 seconds
+    setTimeout(() => {
+      toast.style.opacity = '0';
+    }, 3000);
   }
 
   showError(message) {
@@ -116,5 +213,4 @@ export default class StoryDetailPage {
       `;
     }
   }
-
 }

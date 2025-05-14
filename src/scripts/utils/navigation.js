@@ -6,16 +6,20 @@ export function updateNavigation() {
     const registerLink = document.getElementById('register-link');
     const addStoryLink = document.getElementById('add-story-link');
     const logoutLink = document.getElementById('logout-link');
+    const savedStoryLink = document.getElementById('saved-stories-link')
 
     if (isAuthenticated) {
         if (loginLink) loginLink.style.display = 'none';
         if (registerLink) registerLink.style.display = 'none';
         if (addStoryLink) addStoryLink.style.display = 'block';
+        if (savedStoryLink) savedStoryLink.style.display = 'block'
         if (logoutLink) logoutLink.style.display = 'block';
+
     } else {
         if (loginLink) loginLink.style.display = 'block';
         if (registerLink) registerLink.style.display = 'block';
         if (addStoryLink) addStoryLink.style.display = 'block';
+        if (savedStoryLink) savedStoryLink.style.display = 'none';
         if (logoutLink) logoutLink.style.display = 'none';
     }
 
