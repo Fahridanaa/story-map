@@ -75,9 +75,6 @@ export async function getStoryDetail(id, token = null) {
       throw new Error(`Failed to fetch story detail for ${id} from API: ${response.statusText}`);
     }
     const data = await response.json();
-    if (data.story) {
-      await putStoryToDb(data.story);
-    }
     return data.story;
   } catch (networkError) {
     throw networkError;

@@ -50,6 +50,9 @@ export default class SavedStoriesPage {
             stories.forEach(story => {
                 const storyCardElement = document.createElement('story-card');
                 storyCardElement.setStory(story);
+                setTimeout(() => {
+                    storyCardElement.updateSaveButtonUI(true);
+                }, 0);
                 storyList.appendChild(storyCardElement);
             });
             noSavedStories.style.display = 'none';

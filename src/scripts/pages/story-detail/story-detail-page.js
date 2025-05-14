@@ -12,6 +12,10 @@ export default class StoryDetailPage {
     });
   }
 
+  updateSaveButtonUI(isSaved) {
+    this._updateSaveButtonUI(isSaved);
+  }
+
   async render() {
     return `
       <div class="fade-in">
@@ -116,7 +120,7 @@ export default class StoryDetailPage {
     const saveButton = document.getElementById('save-story-button');
     if (!saveButton) return;
 
-    // Check if story is already saved
+    // Always check if story is already saved when the page loads
     const isSaved = await this._checkIfSaved(story.id);
     this._updateSaveButtonUI(isSaved);
 

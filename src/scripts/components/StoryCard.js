@@ -9,6 +9,10 @@ export class StoryCard extends HTMLElement {
         this.render();
     }
 
+    updateSaveButtonUI(isSaved) {
+        this._updateSaveButtonUI(isSaved);
+    }
+
     render() {
         if (!this.story) return;
 
@@ -169,11 +173,8 @@ export class StoryCard extends HTMLElement {
     _setupSaveButton() {
         const saveButton = this.shadowRoot.querySelector(`#save-button-${this.story.id}`);
         if (saveButton) {
-            // Check if story is already saved
             this._checkIfSaved().then(isSaved => {
-                if (isSaved) {
-                    this._updateSaveButtonUI(true);
-                }
+                this._updateSaveButtonUI(isSaved);
             });
 
             saveButton.addEventListener('click', async (event) => {

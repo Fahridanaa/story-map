@@ -116,6 +116,20 @@ function setupClearOfflineDataButton() {
           timerProgressBar: true
         });
 
+        const storyCards = document.querySelectorAll('story-card');
+        storyCards.forEach(card => {
+          card.updateSaveButtonUI(false);
+        });
+
+        const storyDetailPage = document.querySelector('.story-detail-container');
+        if (storyDetailPage) {
+          const saveButton = document.getElementById('save-story-button');
+          if (saveButton) {
+            saveButton.classList.remove('saved');
+            saveButton.innerHTML = '<i class="far fa-bookmark"></i><span>Save Story</span>';
+          }
+        }
+
         if (window.location.hash === '#/saved-stories') {
           window.location.reload();
         }
