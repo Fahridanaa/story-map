@@ -57,6 +57,17 @@ export default class SavedStoriesPage {
             });
             noSavedStories.style.display = 'none';
         } else {
+            this._showNoStoriesMessage();
+        }
+    }
+
+    _showNoStoriesMessage() {
+        const noSavedStories = document.getElementById('no-saved-stories');
+        if (noSavedStories) {
+            noSavedStories.innerHTML = `
+                <p>You haven't saved any stories yet.</p>
+                <a href="#/" class="browse-stories-link">Browse Stories</a>
+            `;
             noSavedStories.style.display = 'block';
         }
     }

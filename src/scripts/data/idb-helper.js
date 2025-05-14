@@ -3,7 +3,7 @@ import { openDB } from 'idb';
 const DB_NAME = 'stories-db';
 const STORIES_STORE_NAME = 'stories';
 const PENDING_STORIES_STORE_NAME = 'pending-stories';
-const DB_VERSION = 2;
+const DB_VERSION = 4;
 
 const openStoriesDB = async () => {
     return openDB(DB_NAME, DB_VERSION, {
@@ -17,6 +17,10 @@ const openStoriesDB = async () => {
                 if (!db.objectStoreNames.contains(PENDING_STORIES_STORE_NAME)) {
                     db.createObjectStore(PENDING_STORIES_STORE_NAME, { keyPath: 'tempId' });
                 }
+            }
+            // For version 4, we're simplifying the schema by removing isFavorite
+            if (oldVersion < 4) {
+                // No schema changes needed, just incrementing version
             }
         },
     });
@@ -43,11 +47,13 @@ export const putStories = async (stories) => {
     const tx = db.transaction(STORIES_STORE_NAME, 'readwrite');
     const store = tx.objectStore(STORIES_STORE_NAME);
     const results = [];
+
     for (const story of stories) {
         if (story && story.id) {
             results.push(await store.put(story));
         }
     }
+
     await tx.done;
     return results;
 };

@@ -124,6 +124,12 @@ export class StoryCard extends HTMLElement {
                     border-color: #0d6efd;
                 }
 
+                .save-button.favorite {
+                    background-color: #fff3cd;
+                    color: #ffc107;
+                    border-color: #ffc107;
+                }
+
                 .save-button i {
                     margin-right: 0.5rem;
                 }
@@ -204,6 +210,29 @@ export class StoryCard extends HTMLElement {
                 await deleteStory(this.story.id);
                 this._updateSaveButtonUI(false);
                 this._showToast('Story removed from saved stories', 'success');
+
+                const isOnSavedStoriesPage = window.location.hash.includes('/saved');
+                if (isOnSavedStoriesPage) {
+                    this.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                    this.style.opacity = '0';
+                    this.style.transform = 'translateY(20px)';
+
+                    setTimeout(() => {
+                        this.remove();
+
+                        const storyList = document.getElementById('story-list');
+                        if (storyList && storyList.children.length === 0) {
+                            const noSavedStories = document.getElementById('no-saved-stories');
+                            if (noSavedStories) {
+                                noSavedStories.innerHTML = `
+                                    <p>You haven't saved any stories yet.</p>
+                                    <a href="#/" class="browse-stories-link">Browse Stories</a>
+                                `;
+                                noSavedStories.style.display = 'block';
+                            }
+                        }
+                    }, 300);
+                }
             } else {
                 await putStory(this.story);
                 this._updateSaveButtonUI(true);

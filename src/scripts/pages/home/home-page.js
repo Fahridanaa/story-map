@@ -54,9 +54,6 @@ export default class HomePage {
       this.#presenter.applyRestoredScrollPosition();
     }
     this.updateLoadMoreButtonVisibility();
-
-    window.addEventListener('online', () => this.updateLoadMoreButtonVisibility());
-    window.addEventListener('offline', () => this.updateLoadMoreButtonVisibility());
   }
 
   renderStories(stories) {
@@ -81,6 +78,18 @@ export default class HomePage {
 
     this.#presenter.updateMap(stories);
     this.updateLoadMoreButtonVisibility();
+  }
+
+  showOfflineMessage(show) {
+    const offlineMessage = document.getElementById('offline-message');
+    if (offlineMessage) {
+      if (show) {
+        offlineMessage.textContent = 'You are offline. Only saved stories are displayed.';
+        offlineMessage.style.display = 'block';
+      } else {
+        offlineMessage.style.display = 'none';
+      }
+    }
   }
 
   updateLoadMoreButtonVisibility() {
@@ -152,6 +161,16 @@ export default class HomePage {
         }, 100);
       });
     }
+
+    window.addEventListener('online', () => {
+      this.updateLoadMoreButtonVisibility();
+      this.#presenter.loadStories();
+    });
+
+    window.addEventListener('offline', () => {
+      this.updateLoadMoreButtonVisibility();
+      this.#presenter.loadStories();
+    });
   }
 
   showLoadingIndicator(show) {

@@ -1,5 +1,6 @@
 import CONFIG from '../../config';
 import authModel from '../../data/auth-model';
+import { getAllStories } from '../../data/idb-helper';
 
 export default class HomePresenter {
     #model;
@@ -116,6 +117,23 @@ export default class HomePresenter {
         this.#view.showLoadingIndicator(true);
 
         try {
+            if (!navigator.onLine) {
+                const savedStories = await getAllStories();
+
+                if (savedStories && savedStories.length > 0) {
+                    this.#stories = savedStories;
+                    this.#hasMoreStories = false;
+                    this.#view.renderStories(this.#stories);
+                    this.#view.showOfflineMessage(true);
+                } else {
+                    this.#stories = [];
+                    this.#hasMoreStories = false;
+                    this.#view.renderStories([]);
+                    this.#view.showOfflineMessage(true);
+                }
+                return;
+            }
+
             const fetchedStories = await this.#model.getStories(this.#currentPage, this.#pageSize);
 
             if (!fetchedStories || fetchedStories.length === 0) {
@@ -140,10 +158,21 @@ export default class HomePresenter {
                 }
             }
             this.#view.renderStories(this.#stories);
+            this.#view.showOfflineMessage(false);
         } catch (error) {
             this.#view.showError('Failed to load stories. Please try again later.');
             if (!navigator.onLine) {
                 this.#hasMoreStories = false;
+                try {
+                    const savedStories = await getAllStories();
+                    if (savedStories && savedStories.length > 0) {
+                        this.#stories = savedStories;
+                        this.#view.renderStories(this.#stories);
+                        this.#view.showOfflineMessage(true);
+                    }
+                } catch (dbError) {
+                    console.error('Error loading saved stories:', dbError);
+                }
             }
         } finally {
             this.#isLoading = false;
