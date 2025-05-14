@@ -39,9 +39,9 @@ export async function getStories(page = 1, size = 10, withLocation = true, token
       throw new Error(`Failed to fetch stories from API: ${response.statusText}`);
     }
     const data = await response.json();
-    if (data.listStory && data.listStory.length > 0) {
-      await putStories(data.listStory);
-    }
+    // if (data.listStory && data.listStory.length > 0) {
+    //   await putStories(data.listStory);
+    // }
     return data.listStory;
   } catch (error) {
     if (page === 1) {

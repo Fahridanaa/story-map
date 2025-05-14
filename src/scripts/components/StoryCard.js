@@ -201,19 +201,17 @@ export class StoryCard extends HTMLElement {
             const savedStory = await getStory(this.story.id);
 
             if (savedStory) {
-                // Story is already saved, so delete it
                 await deleteStory(this.story.id);
                 this._updateSaveButtonUI(false);
-                this._showToast('Story removed from saved stories');
+                this._showToast('Story removed from saved stories', 'success');
             } else {
-                // Story is not saved, so save it
                 await putStory(this.story);
                 this._updateSaveButtonUI(true);
-                this._showToast('Story saved successfully');
+                this._showToast('Story saved successfully', 'success');
             }
         } catch (error) {
             console.error('Error toggling save story:', error);
-            this._showToast('Failed to save story. Please try again.');
+            this._showToast('Failed to save story. Please try again.', 'error');
         }
     }
 
@@ -230,33 +228,17 @@ export class StoryCard extends HTMLElement {
         }
     }
 
-    _showToast(message) {
-        // Create toast element if it doesn't exist
-        let toast = document.getElementById('toast-message');
-        if (!toast) {
-            toast = document.createElement('div');
-            toast.id = 'toast-message';
-            toast.style.position = 'fixed';
-            toast.style.bottom = '20px';
-            toast.style.left = '50%';
-            toast.style.transform = 'translateX(-50%)';
-            toast.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
-            toast.style.color = 'white';
-            toast.style.padding = '10px 20px';
-            toast.style.borderRadius = '4px';
-            toast.style.zIndex = '1000';
-            toast.style.transition = 'opacity 0.3s ease';
-            document.body.appendChild(toast);
-        }
-
-        // Set message and show toast
-        toast.textContent = message;
-        toast.style.opacity = '1';
-
-        // Hide toast after 3 seconds
-        setTimeout(() => {
-            toast.style.opacity = '0';
-        }, 3000);
+    _showToast(message, icon = 'success') {
+        import('sweetalert2').then(({ default: Swal }) => {
+            Swal.fire({
+                toast: true,
+                position: 'top-right',
+                showConfirmButton: false,
+                timer: 3000,
+                icon: icon,
+                title: message,
+            });
+        });
     }
 }
 
