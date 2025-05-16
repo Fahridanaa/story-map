@@ -109,11 +109,10 @@ export default class StoryDetailPage {
     if (backButton) {
       backButton.addEventListener('click', (event) => {
         event.preventDefault();
-        window.location.hash = '/';
+        window.history.back();
       });
     }
 
-    // Setup save button
     this._setupSaveButton(story);
   }
 
