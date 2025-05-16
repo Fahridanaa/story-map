@@ -151,7 +151,7 @@ export class StoryCard extends HTMLElement {
             </style>
 
             <div class="story-card slide-in" style="view-transition-name: story-card-${this.story.id}">
-                <img class="story-image" src="${this.story.photoUrl}" alt="Story image: ${this.story.description.substring(0, 50)}..." style="view-transition-name: story-image-${this.story.id}" onerror="this.onerror=null; this.src='https://via.placeholder.com/400x300?text=Image+Not+Available';">
+                <img class="story-image" src="${this.story.photoUrl}" alt="Story image: ${this.story.description.substring(0, 50)}..." style="view-transition-name: story-image-${this.story.id}" onerror="this.onerror=null;">
 
                 <div class="story-content">
                     <h2 class="story-title">Story by ${this.story.name}</h2>
@@ -193,8 +193,8 @@ export class StoryCard extends HTMLElement {
     async _checkIfSaved() {
         try {
             const { getStory } = await import('../data/idb-helper');
-            const savedStory = await getStory(this.story.id);
-            return !!savedStory;
+            const storyFromDb = await getStory(this.story.id);
+            return !!storyFromDb;
         } catch (error) {
             console.error('Error checking if story is saved:', error);
             return false;
@@ -204,30 +204,24 @@ export class StoryCard extends HTMLElement {
     async _toggleSaveStory() {
         try {
             const { getStory, putStory, deleteStory } = await import('../data/idb-helper');
-            const savedStory = await getStory(this.story.id);
+            const storyFromDb = await getStory(this.story.id);
 
-            if (savedStory) {
+            if (storyFromDb) {
                 await deleteStory(this.story.id);
                 this._updateSaveButtonUI(false);
-                this._showToast('Story removed from saved stories', 'success');
+                this._showToast('Story removed from saved list', 'success');
 
                 const isOnSavedStoriesPage = window.location.hash.includes('/saved');
                 if (isOnSavedStoriesPage) {
                     this.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
                     this.style.opacity = '0';
                     this.style.transform = 'translateY(20px)';
-
                     setTimeout(() => {
                         this.remove();
-
-                        const storyList = document.getElementById('story-list');
+                        const storyList = document.querySelector('#story-list');
                         if (storyList && storyList.children.length === 0) {
-                            const noSavedStories = document.getElementById('no-saved-stories');
+                            const noSavedStories = document.querySelector('#no-saved-stories');
                             if (noSavedStories) {
-                                noSavedStories.innerHTML = `
-                                    <p>You haven't saved any stories yet.</p>
-                                    <a href="#/" class="browse-stories-link">Browse Stories</a>
-                                `;
                                 noSavedStories.style.display = 'block';
                             }
                         }
@@ -240,7 +234,7 @@ export class StoryCard extends HTMLElement {
             }
         } catch (error) {
             console.error('Error toggling save story:', error);
-            this._showToast('Failed to save story. Please try again.', 'error');
+            this._showToast('Failed to update saved state. Please try again.', 'error');
         }
     }
 

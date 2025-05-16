@@ -21,6 +21,7 @@ class SavedStoriesPresenter {
     }
 
     destroy() {
+        // Any cleanup logic for the presenter can go here
     }
 }
 

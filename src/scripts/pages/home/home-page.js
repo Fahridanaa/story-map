@@ -5,12 +5,16 @@ import storyData from '../../data/story-data';
 export default class HomePage {
   #presenter;
   scrollTimeout;
+  _boundHandleOnline;
+  _boundHandleOffline;
 
   constructor() {
     this.#presenter = new HomePresenter({
       model: storyData,
       view: this
     });
+    this._boundHandleOnline = this._handleOnline.bind(this);
+    this._boundHandleOffline = this._handleOffline.bind(this);
   }
 
   async render() {
@@ -162,15 +166,8 @@ export default class HomePage {
       });
     }
 
-    window.addEventListener('online', () => {
-      this.updateLoadMoreButtonVisibility();
-      this.#presenter.loadStories();
-    });
-
-    window.addEventListener('offline', () => {
-      this.updateLoadMoreButtonVisibility();
-      this.#presenter.loadStories();
-    });
+    window.addEventListener('online', this._boundHandleOnline);
+    window.addEventListener('offline', this._boundHandleOffline);
   }
 
   showLoadingIndicator(show) {
@@ -229,13 +226,35 @@ export default class HomePage {
     `;
   }
 
+  _handleOnline() {
+    this.updateLoadMoreButtonVisibility();
+    if (this.#presenter && typeof this.#presenter.loadStories === 'function') {
+      this.#presenter.loadStories();
+    }
+  }
+
+  _handleOffline() {
+    this.updateLoadMoreButtonVisibility();
+    if (this.#presenter && typeof this.#presenter.loadStories === 'function') {
+      this.#presenter.loadStories();
+    }
+  }
+
   destroy() {
     try {
+      window.removeEventListener('online', this._boundHandleOnline);
+      window.removeEventListener('offline', this._boundHandleOffline);
+
+      if (this.scrollTimeout) {
+        clearTimeout(this.scrollTimeout);
+      }
+
       if (this.#presenter) {
         this.#presenter.destroy();
+        this.#presenter = null;
       }
     } catch (error) {
-      console.error('Error during cleanup:', error);
+      console.error('Error during HomePage cleanup:', error);
     }
   }
 }

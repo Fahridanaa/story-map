@@ -2,7 +2,7 @@ importScripts('https://unpkg.com/idb@7.1.1/build/umd.js');
 
 const DB_NAME = 'stories-db';
 const PENDING_STORIES_STORE_NAME = 'pending-stories';
-const DB_VERSION = 2;
+const DB_VERSION = 4;
 
 const API_BASE_URL = 'https://story-api.dicoding.dev/v1';
 const ENDPOINTS = {
