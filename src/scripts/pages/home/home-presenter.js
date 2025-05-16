@@ -1,6 +1,6 @@
 import CONFIG from '../../config';
 import authModel from '../../data/auth-model';
-import { getAllStories } from '../../data/idb-helper';
+import { getAllStories, getAllPendingStories } from '../../data/idb-helper';
 
 export default class HomePresenter {
     #model;
@@ -47,41 +47,42 @@ export default class HomePresenter {
 
     restorePageState() {
         try {
-            const savedStories = localStorage.getItem('homeStories');
-            const savedPage = localStorage.getItem('homeCurrentPage');
             const savedScroll = localStorage.getItem('homeScrollPosition');
+            if (savedScroll) {
+                this.#lastScrollPosition = parseInt(savedScroll, 10);
+            }
 
-            if (savedStories && savedPage) {
-                this.#stories = JSON.parse(savedStories);
-                this.#currentPage = parseInt(savedPage, 10);
-                this.#lastScrollPosition = savedScroll ? parseInt(savedScroll, 10) : 0;
-
-                this.#hasMoreStories = (this.#stories.length === this.#currentPage * this.#pageSize);
-
-                this.#isStateRestored = true;
-                return true;
+            const savedPage = localStorage.getItem('homeCurrentPage');
+            if (savedPage) {
+                const pageNumber = parseInt(savedPage, 10);
+                if (!isNaN(pageNumber) && pageNumber > 0) {
+                    this.#currentPage = pageNumber;
+                    this.#isStateRestored = true;
+                } else {
+                    this.#isStateRestored = false;
+                    this.#currentPage = 1;
+                }
+            } else {
+                this.#isStateRestored = false;
+                this.#currentPage = 1;
             }
         } catch (error) {
-            localStorage.removeItem('homeStories');
-            localStorage.removeItem('homeCurrentPage');
+            console.error('Error restoring page state:', error);
             localStorage.removeItem('homeScrollPosition');
+            localStorage.removeItem('homeCurrentPage');
+            this.#isStateRestored = false;
+            this.#currentPage = 1;
+            this.#lastScrollPosition = 0;
         }
-        this.#isStateRestored = false;
-        return false;
     }
 
     savePageState() {
         const storiesContainer = document.querySelector('.stories-container');
         if (storiesContainer) {
             this.#lastScrollPosition = storiesContainer.scrollTop;
-            localStorage.setItem('homeScrollPosition', this.#lastScrollPosition);
+            localStorage.setItem('homeScrollPosition', this.#lastScrollPosition.toString());
         }
-        const maxStoriesToStore = this.#pageSize * 5;
-        const storiesToStore = this.#stories.slice(0, maxStoriesToStore);
-
-        localStorage.setItem('homeStories', JSON.stringify(storiesToStore));
-        localStorage.setItem('homeCurrentPage', this.#currentPage);
-        localStorage.setItem('homeHasMoreStories', this.#hasMoreStories);
+        localStorage.setItem('homeCurrentPage', this.#currentPage.toString());
     }
 
     applyRestoredScrollPosition() {
@@ -96,19 +97,27 @@ export default class HomePresenter {
     }
 
     async loadInitialStories() {
-        if (this.restorePageState()) {
-            this.#view.renderStories(this.#stories);
-        } else {
-            this.#currentPage = 1;
-            this.#stories = [];
-            this.#hasMoreStories = true;
-            await this.loadStories();
+        this.restorePageState();
+
+        const targetPageToLoad = this.#isStateRestored ? this.#currentPage : 1;
+
+        this.#stories = [];
+        this.#hasMoreStories = true;
+
+        for (let pageNumToLoad = 1; pageNumToLoad <= targetPageToLoad; pageNumToLoad++) {
+            if (!this.#hasMoreStories && pageNumToLoad > 1) {
+                break;
+            }
+            this.#currentPage = pageNumToLoad;
+
+            await this.loadStories(pageNumToLoad > 1);
         }
     }
 
-    async loadStories(isLoadMore = false) {
+    async loadStories(isLoadMoreOperation = false) {
         if (this.#isLoading) return;
-        if (isLoadMore && !this.#hasMoreStories) {
+
+        if (isLoadMoreOperation && !this.#hasMoreStories) {
             this.#view.updateLoadMoreButtonVisibility();
             return;
         }
@@ -117,67 +126,85 @@ export default class HomePresenter {
         this.#view.showLoadingIndicator(true);
 
         try {
-            if (!navigator.onLine) {
-                const savedStories = await getAllStories();
+            if (!isLoadMoreOperation) {
+                this.#stories = [];
+                this.#hasMoreStories = true;
+            }
 
-                if (savedStories && savedStories.length > 0) {
-                    this.#stories = savedStories;
-                    this.#hasMoreStories = false;
-                    this.#view.renderStories(this.#stories);
-                    this.#view.showOfflineMessage(true);
-                } else {
-                    this.#stories = [];
-                    this.#hasMoreStories = false;
-                    this.#view.renderStories([]);
-                    this.#view.showOfflineMessage(true);
+            if (!navigator.onLine) {
+                if (!isLoadMoreOperation) {
+                    const savedStories = await getAllStories();
+                    const pendingStoriesFromDb = await getAllPendingStories();
+
+                    const adaptedPendingStories = pendingStoriesFromDb.map(pStory => ({
+                        ...pStory,
+                        id: pStory.tempId,
+                        photoUrl: pStory.photo,
+                        name: pStory.name || 'Pending Story',
+                        isPending: true
+                    }));
+
+                    let combinedStories = [];
+                    if (savedStories && savedStories.length > 0) {
+                        combinedStories = [...savedStories];
+                    }
+                    combinedStories = [...adaptedPendingStories, ...combinedStories];
+
+                    if (combinedStories.length > 0) {
+                        this.#stories = combinedStories;
+                    } else {
+                        this.#stories = [];
+                    }
                 }
+                this.#hasMoreStories = false;
+                this.#view.renderStories(this.#stories);
+                this.#view.showOfflineMessage(true);
                 return;
             }
 
             const fetchedStories = await this.#model.getStories(this.#currentPage, this.#pageSize);
 
-            if (!fetchedStories || fetchedStories.length === 0) {
-                if (!isLoadMore) {
-                    this.#stories = this.#isStateRestored ? this.#stories : [];
+            if (fetchedStories && fetchedStories.length > 0) {
+                if (isLoadMoreOperation) {
+                    const existingIds = new Set(this.#stories.map(story => story.id));
+                    const newStoriesToAdd = fetchedStories.filter(story => !existingIds.has(story.id));
+                    this.#stories = [...this.#stories, ...newStoriesToAdd];
+                } else {
+                    this.#stories = fetchedStories;
+                }
+                this.#hasMoreStories = fetchedStories.length === this.#pageSize;
+            } else {
+                if (!isLoadMoreOperation) {
+                    this.#stories = [];
                 }
                 this.#hasMoreStories = false;
-            } else {
-                if (!isLoadMore && !this.#isStateRestored) {
-                    this.#stories = fetchedStories;
-                } else if (isLoadMore) {
-                    const existingIds = new Set(this.#stories.map(story => story.id));
-                    const newStories = fetchedStories.filter(story => !existingIds.has(story.id));
-                    if (newStories.length > 0) {
-                        this.#stories = [...this.#stories, ...newStories];
-                    }
-                } else if (this.#isStateRestored && !isLoadMore) {
-                }
-
-                if (fetchedStories.length < this.#pageSize) {
-                    this.#hasMoreStories = false;
-                }
             }
+
             this.#view.renderStories(this.#stories);
             this.#view.showOfflineMessage(false);
+
         } catch (error) {
+            console.error(`Error loading stories (page ${this.#currentPage}):`, error);
             this.#view.showError('Failed to load stories. Please try again later.');
-            if (!navigator.onLine) {
-                this.#hasMoreStories = false;
+            if (!navigator.onLine && !isLoadMoreOperation) {
                 try {
                     const savedStories = await getAllStories();
                     if (savedStories && savedStories.length > 0) {
                         this.#stories = savedStories;
-                        this.#view.renderStories(this.#stories);
-                        this.#view.showOfflineMessage(true);
+                    } else {
+                        this.#stories = [];
                     }
+                    this.#view.renderStories(this.#stories);
+                    this.#view.showOfflineMessage(true);
                 } catch (dbError) {
-                    console.error('Error loading saved stories:', dbError);
+                    console.error('Error loading saved stories after network failure:', dbError);
                 }
             }
+            this.#hasMoreStories = false;
         } finally {
             this.#isLoading = false;
-            this.#isStateRestored = false;
             this.#view.showLoadingIndicator(false);
+            this.#view.updateLoadMoreButtonVisibility();
         }
     }
 

@@ -1,5 +1,4 @@
 import SavedStoriesPresenter from './saved-stories-presenter';
-// import { StoryCard } from '../../components/StoryCard';
 
 export default class SavedStoriesPage {
     #presenter;
@@ -40,7 +39,6 @@ export default class SavedStoriesPage {
         const noSavedStories = document.getElementById('no-saved-stories');
 
         if (!storyList || !noSavedStories) {
-            console.error('Required elements not found');
             return;
         }
 
